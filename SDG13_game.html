@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pollution Poppers</title>
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #87CEEB, #FFFFFF);
+      touch-action: none; /* Prevent accidental scrolling on touch devices */
+    }
+
+    #game-container {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background: url('pixelated.jpg') repeat-x;
+      animation: moveBackground 30s linear infinite;
+      background-size: cover;
+      touch-action: none; /* Prevent scroll locking due to touch events */
+    }
+
+    @keyframes moveBackground {
+      0% { background-position-x: 0; }
+      100% { background-position-x: -2000px; }
+    }
+
+    #factory {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 200px;
+      background: url('factory.png') repeat-x;
+      background-size: contain;
+      animation: moveFactory 30s linear infinite;
+      z-index: 1;
+    }
+
+    @keyframes moveFactory {
+      0% { background-position-x: 0; }
+      100% { background-position-x: -2000px; }
+    }
+
+    #timer, #score {
+      position: absolute;
+      font-size: 24px;
+      color: black;
+      z-index: 2;
+    }
+
+    #timer {
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #score {
+      top: 10px;
+      left: 10px;
+    }
+
+    .bubble {
+      position: absolute;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 18px;
+      font-family: Arial, sans-serif;
+      color: white;
+      font-weight: bold;
+      animation: moveBubble 7s linear infinite;
+      z-index: 2;
+    }
+
+    .red {
+      background-color: rgba(139, 0, 0, 0.8);
+    }
+
+    .green {
+      background-color: rgba(0, 100, 0, 0.8);
+    }
+
+    @keyframes moveBubble {
+      0% { transform: translateY(100vh); }
+      100% { transform: translateY(-100vh); }
+    }
+
+    #copyright {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 16px;
+      color: black;
+      font-family: Arial, sans-serif;
+      z-index: 2;
+    }
+
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 3;
+      display: none;
+    }
+
+    #overlay h1, #overlay button {
+      color: white;
+      margin: 10px;
+    }
+
+    #overlay button {
+      color: black;
+      background-color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    #start-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 10px 20px;
+      font-size: 20px;
+      z-index: 4;
+    }
+  </style>
+</head>
+<body>
+
+<div id="game-container">
+  <div id="factory"></div>
+  <div id="timer">Time: 30</div>
+  <div id="score">Score: 0</div>
+  <div id="overlay">
+    <h1>Game Over</h1>
+    <button onclick="restartGame()">Restart</button>
+  </div>
+  <button id="start-button" onclick="startGame()">Start</button>
+</div>
+
+<script>
+  const gameContainer = document.getElementById('game-container');
+  const timerDisplay = document.getElementById('timer');
+  const scoreDisplay = document.getElementById('score');
+  const overlay = document.getElementById('overlay');
+  const startButton = document.getElementById('start-button');
+  let timeRemaining = 30;
+  let score = 0;
+  let gameInterval;
+  let timerInterval;
+
+  // Prevent any scrolling or dragging in the game area
+  gameContainer.addEventListener('mousedown', e => e.preventDefault());
+
+  function randomPosition() {
+    const x = Math.random() * window.innerWidth;
+    const size = Math.random() * 50 + 30;
+    return { x, size };
+  }
+
+  function createBubble(color) {
+    const bubble = document.createElement('div');
+    const { x, size } = randomPosition();
+    bubble.style.width = `${size}px`;
+    bubble.style.height = `${size}px`;
+    bubble.style.left = `${x}px`;
+    bubble.classList.add('bubble', color);
+
+    if (color === 'red') {
+      bubble.textContent = Math.random() > 0.5 ? 'CO₂' : 'CH₄';
+      bubble.onclick = function() {
+        score += 1;
+        scoreDisplay.textContent = `Score: ${score}`;
+        bubble.remove();
+      };
+    } else if (color === 'green') {
+      bubble.textContent = 'O₂';
+      bubble.onclick = function() {
+        score -= 1;
+        scoreDisplay.textContent = `Score: ${score}`;
+        bubble.remove();
+      };
+    }
+
+    gameContainer.appendChild(bubble);
+
+    setTimeout(() => {
+      bubble.remove();
+    }, 7000);
+  }
+
+  function startGame() {
+    startButton.style.display = 'none';
+    overlay.style.display = 'none';
+    timeRemaining = 30;
+    score = 0;
+    scoreDisplay.textContent = `Score: ${score}`;
+    timerDisplay.textContent = `Time: ${timeRemaining}`;
+
+    gameInterval = setInterval(() => {
+      if (Math.random() > 0.3) {
+        createBubble('red');
+      } else {
+        createBubble('green');
+      }
+    }, 1000);
+
+    timerInterval = setInterval(() => {
+      timeRemaining--;
+      timerDisplay.textContent = `Time: ${timeRemaining}`;
+      if (timeRemaining <= 0) {
+        clearInterval(timerInterval);
+        clearInterval(gameInterval);
+        gameOver();
+      }
+    }, 1000);
+  }
+
+  function gameOver() {
+    overlay.style.display = 'flex';
+  }
+
+  function restartGame() {
+    overlay.style.display = 'none';
+    startGame();
+  }
+</script>
+
+</body>
+</html>

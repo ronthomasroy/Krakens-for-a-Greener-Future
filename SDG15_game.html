@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SDG Recycling Game</title>
+    <style>
+        body {
+            background-color: black; /* Set the background color of the entire page to black */
+            color: rgb(242, 242, 242); /* Set the default text color to white */
+        }
+        canvas {
+            border: 2px solid #333;
+            display: block;
+            margin: 0 auto;
+            background-color: black; /* Set the canvas background color to black */
+        }
+        #score, #timer {
+            text-align: center;
+            font-size: 24px;
+            margin: 10px;
+            font-family: Arial, sans-serif;
+        }
+        button {
+            display: block;
+            margin: 10px auto;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            background-color: #4CAF50; /* Green background for buttons */
+            color: white; /* White text for buttons */
+            border: none; /* Remove border */
+            border-radius: 5px; /* Rounded corners */
+        }
+        button:hover {
+            background-color: #45a049; /* Darker green on hover */
+        }
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="timer">Time: 60</div>
+    <canvas id="gameCanvas" width="600" height="300"></canvas>
+    <button id="startButton">Start</button>
+    <button id="restartButton" style="display: none;">Restart</button>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const timerDisplay = document.getElementById('timer');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+
+        let score = 0;
+        let timeLeft = 60;
+        let gameActive = false; // Changed to false to start the game paused
+        let items = [];
+        let keys = {};
+
+        class Player {
+            constructor() {
+                this.width = 45;
+                this.height = 55;
+                this.x = canvas.width / 2 - this.width / 2;
+                this.y = canvas.height - this.height - 10;
+                this.speed = 6;
+            }
+
+            draw() {
+                ctx.fillStyle = '#4CAF50';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+                ctx.fillStyle = '#2E7D32';
+                ctx.fillRect(this.x - 5, this.y - 10, this.width + 10, 10);
+                ctx.fillStyle = '#333';
+                ctx.beginPath();
+                ctx.arc(this.x + 10, this.y + this.height + 5, 5, 0, Math.PI * 2);
+                ctx.arc(this.x + this.width - 10, this.y + this.height + 5, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            move(direction) {
+                if (direction === 'left' && this.x > 0) {
+                    this.x -= this.speed;
+                }
+                if (direction === 'right' && this.x < canvas.width - this.width) {
+                    this.x += this.speed;
+                }
+            }
+        }
+
+        class Item {
+            constructor() {
+                this.width = 15;
+                this.height = 40;
+                this.x = Math.random() * (canvas.width - this.width);
+                this.y = 0;
+                this.speed = Math.random() * 2 + 1;
+                const itemType = Math.random();
+
+                if (itemType < 0.33) {
+                    this.type = 'plastic';
+                } else if (itemType < 0.66) {
+                    this.type = 'eWaste';
+                } else {
+                    this.type = 'paper';
+                }
+            }
+
+            draw() {
+                if (this.type === 'plastic') {
+                    ctx.fillStyle = '#2196F3';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.fillStyle = '#FF9800';
+                    ctx.fillRect(this.x + (this.width / 4), this.y - 10, this.width / 2, 10);
+                } else if (this.type === 'eWaste') {
+                    ctx.fillStyle = '#FFEB3B';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.fillStyle = '#FFC107';
+                    ctx.fillRect(this.x + 5, this.y + 5, 10, 10);
+                } else if (this.type === 'paper') {
+                    ctx.fillStyle = '#D9D9D9';
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                }
+            }
+
+            update() {
+                this.y += this.speed;
+                return this.y > canvas.height;
+            }
+        }
+
+        const player = new Player();
+
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function addNewItem() {
+            if (gameActive) {
+                items.push(new Item());
+            }
+        }
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            if (keys['ArrowLeft']) player.move('left');
+            if (keys['ArrowRight']) player.move('right');
+
+            player.draw();
+
+            items = items.filter(item => {
+                item.draw();
+                
+                if (item.y + item.height > player.y &&
+                    item.x < player.x + player.width &&
+                    item.x + item.width > player.x) {
+                    if (item.type === 'plastic') {
+                        score += 10;
+                    } else if (item.type === 'eWaste') {
+                        score += 20;
+                    } else {
+                        score += 15;
+                    }
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    return false;
+                }
+                
+                return !item.update();
+            });
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateTimer() {
+            if (!gameActive) return;
+            
+            timeLeft--;
+            timerDisplay.textContent = `Time: ${timeLeft}`;
+            
+            if (timeLeft <= 0) {
+                gameActive = false;
+                restartButton.style.display = 'block'; // Show the restart button
+                setTimeout(() => {
+                    alert(`Game Over! Your score: ${score}`);
+                }, 100);
+            } else {
+                setTimeout(updateTimer, 1000);
+            }
+        }
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', restartGame);
+
+        function startGame() {
+            score = 0;
+            timeLeft = 60;
+            gameActive = true;
+            items = [];
+            scoreDisplay.textContent = `Score: ${score}`;
+            timerDisplay.textContent = `Time: ${timeLeft}`;
+            startButton.style.display = 'none'; // Hide the start button
+            restartButton.style.display = 'none'; // Hide the restart button
+            updateTimer();
+            gameLoop();
+        }
+
+        function restartGame() {
+            score = 0;
+            timeLeft = 30;
+            gameActive = true;
+            items = [];
+            scoreDisplay.textContent = `Score: ${score}`;
+            timerDisplay.textContent = `Time: ${timeLeft}`;
+            restartButton.style.display = 'none'; // Hide the restart button
+            updateTimer();
+            gameLoop();
+        }
+
+        // Set an interval to add a new item every second
+        setInterval(addNewItem, 1000);
+    </script>
+</body>
+</html>

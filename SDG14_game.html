@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Timed Submarine Ocean Cleanup</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #000;
+            font-family: Arial, sans-serif;
+        }
+        canvas {
+            border: 2px solid #0077be;
+        }
+        #gameInfo {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: white;
+            font-size: 18px;
+            text-align: center;
+        }
+        #timer {
+            color: #ff6b6b;
+            font-weight: bold;
+        }
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 36px;
+            text-align: center;
+            display: none;
+        }
+        #startButton, #restartButton {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+            background: #0077be;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            display: block;
+        }
+        #restartButton {
+            display: none; /* Initially hidden */
+        }
+    </style>
+</head>
+<body>
+    <div id="gameInfo">
+        Time remaining: <span id="timer">20</span>s<br>
+        Plastic collected: <span id="score">0</span><br>
+        Use arrow keys to move
+    </div>
+    <div id="gameOver">
+        Game Over!<br>
+        Final Score: <span id="finalScore">0</span>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <button id="startButton">Start Game</button>
+    <button id="restartButton">Restart</button>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const timerElement = document.getElementById('timer');
+        const gameOverElement = document.getElementById('gameOver');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
+
+        canvas.width = 800;
+        canvas.height = 600;
+
+        // Game state
+        let score = 0;
+        let gameActive = false;
+        let timeRemaining = 20;
+
+        // Submarine
+        const submarine = {
+            x: canvas.width / 4,
+            y: canvas.height / 2,
+            width: 100,
+            height: 40,
+            speed: 4,
+            dx: 0,
+            dy: 0,
+            collectingRange: 30,
+            windowColor: '#87CEEB', // Default window color
+            originalColor: '#87CEEB' // Store the original color
+        };
+
+        // Plastic pieces
+        const plastics = [];
+        const plasticTypes = [
+            { name: 'Bag', color: '#ffffff80', windowColor: '#ff6b6b' }, // Red for bags
+            { name: 'Bottle', color: '#88888880', windowColor: '#ffd700' }, // Yellow for bottles
+            { name: 'Wrapper', color: '#cccccc80', windowColor: '#00FFFF' } // Cyan for wrappers
+        ];
+
+        class Plastic {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width + 20;
+                this.y = Math.random() * (canvas.height - 40) + 20;
+                this.size = Math.random() * 10 + 10;
+                this.speed = Math.random() * 2 + 1;
+                const plasticType = plasticTypes[Math.floor(Math.random() * plasticTypes.length)];
+                this.color = plasticType.color;
+                this.windowColor = plasticType.windowColor; // Store window color
+            }
+
+            update() {
+                this.x -= this.speed;
+                if (this.x < -20) this.reset();
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#ffffff30';
+                ctx.stroke();
+            }
+        }
+
+        // Initialize plastics
+        function initPlastics() {
+            plastics.length = 0;
+            for (let i = 0; i < 15; i++) {
+                plastics.push(new Plastic());
+            }
+        }
+
+        // Timer function
+        function startTimer() {
+            const timerInterval = setInterval(() => {
+                timeRemaining--;
+                timerElement.textContent = timeRemaining;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        function endGame() {
+            gameActive = false;
+            gameOverElement.style.display = 'block';
+            finalScore.textContent = score; // Display final score
+            restartButton.style.display = 'block'; // Show restart button
+        }
+
+        function resetGame() {
+            score = 0;
+            timeRemaining = 20;
+            gameActive = true;
+            submarine.collectingRange = 30;
+            submarine.windowColor = submarine.originalColor; // Reset to original color
+            submarine.x = canvas.width / 4;
+            submarine.y = canvas.height / 2;
+            scoreElement.textContent = '0';
+            timerElement.textContent = '20';
+            gameOverElement.style.display = 'none';
+            restartButton.style.display = 'none'; // Hide restart button
+            initPlastics();
+            startTimer();
+        }
+
+        // Draw water background
+        function drawWater() {
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0077be');
+            gradient.addColorStop(1, '#003366');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw bubbles
+            for (let i = 0; i < 20; i++) {
+                ctx.fillStyle = '#ffffff20';
+                ctx.beginPath();
+                const x = (Date.now() / 50 + i * 100) % canvas.width;
+                const y = ((Date.now() / 20 + i * 200) % canvas.height);
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Draw submarine
+        function drawSubmarine() {
+            ctx.fillStyle = '#FFD700';
+            
+            // Main body
+            ctx.beginPath();
+            ctx.ellipse(submarine.x, submarine.y, submarine.width / 2, submarine.height / 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Periscope
+            ctx.fillRect(submarine.x + 20, submarine.y - submarine.height, 10, submarine.height / 2);
+            
+            // Window
+            ctx.fillStyle = submarine.windowColor; // Change window color based on collected waste
+            ctx.beginPath();
+            ctx.arc(submarine.x - 15, submarine.y, 10, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Move submarine
+        function moveSubmarine() {
+            if (!gameActive) return;
+            
+            submarine.x += submarine.dx;
+            submarine.y += submarine.dy;
+
+            if (submarine.x < submarine.width / 2) submarine.x = submarine.width / 2;
+            if (submarine.x > canvas.width - submarine.width / 2) 
+                submarine.x = canvas.width - submarine.width / 2;
+            if (submarine.y < submarine.height) submarine.y = submarine.height;
+            if (submarine.y > canvas.height - submarine.height / 2) 
+                submarine.y = canvas.height - submarine.height / 2;
+        }
+
+        // Check collisions
+        function checkCollections() {
+            if (!gameActive) return;
+            
+            plastics.forEach(plastic => {
+                const dx = submarine.x - plastic.x;
+                const dy = submarine.y - plastic.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                if (distance < submarine.collectingRange + plastic.size) {
+                    score++;
+                    scoreElement.textContent = score;
+                    submarine.collectingRange += 0.5;
+
+                    // Temporarily change the window color
+                    const originalColor = submarine.windowColor;
+                    submarine.windowColor = plastic.windowColor; // Change to the color of the collected plastic
+
+                    // Reset window color after a short delay
+                    setTimeout(() => {
+                        submarine.windowColor = originalColor; // Revert back to original color
+                    }, 300); // Duration for the color change
+
+                    plastic.reset();
+                    createCollectionEffect(plastic.x, plastic.y);
+                }
+            });
+        }
+
+        // Collection effect particles
+        let particles = [];
+        function createCollectionEffect(x, y) {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: Math.random() * 2 - 1,
+                    dy: Math.random() * 2 - 1,
+                    life: 20
+                });
+            }
+        }
+
+        // Update particles
+        function updateParticles() {
+            particles.forEach((particle, index) => {
+                particle.x += particle.dx;
+                particle.y += particle.dy;
+                particle.life--;
+
+                if (particle.life <= 0) {
+                    particles.splice(index, 1);
+                } else {
+                    ctx.fillStyle = `rgba(255, 255, 255, ${particle.life / 20})`;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+        }
+
+        // Game loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawWater();
+            moveSubmarine();
+            drawSubmarine();
+            
+            plastics.forEach(plastic => {
+                plastic.update();
+                plastic.draw();
+            });
+            
+            updateParticles();
+            checkCollections();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            
+            if (e.key === 'ArrowLeft') submarine.dx = -submarine.speed;
+            if (e.key === 'ArrowRight') submarine.dx = submarine.speed;
+            if (e.key === 'ArrowUp') submarine.dy = -submarine.speed;
+            if (e.key === 'ArrowDown') submarine.dy = submarine.speed;
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') submarine.dx = 0;
+            if (e.key === 'ArrowUp' || e.key === 'ArrowDown') submarine.dy = 0;
+        });
+
+        startButton.addEventListener('click', () => {
+            resetGame();
+            startButton.style.display = 'none'; // Hide the start button
+            gameLoop(); // Start the game loop
+        });
+
+        restartButton.addEventListener('click', () => {
+            resetGame();
+            restartButton.style.display = 'none'; // Hide the restart button
+            startButton.style.display = 'none'; // Hide the start button as well
+            gameLoop(); // Start the game loop
+        });
+
+        // Start game
+        initPlastics();
+    </script>
+</body>
+</html>
